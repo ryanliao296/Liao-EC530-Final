@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Teacher Doc Analyzer</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      max-width: 600px;
+      margin: 2rem auto;
+      padding: 1rem;
+      background: #f5f5f5;
+      border-radius: 10px;
+    }
+    textarea, select, input[type=file], button {
+      width: 100%;
+      margin: 10px 0;
+      padding: 10px;
+    }
+    button {
+      background-color: #4CAF50;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #45a049;
+    }
+    #output {
+      white-space: pre-wrap;
+      background: #fff;
+      padding: 10px;
+      border: 1px solid #ccc;
+      margin-top: 10px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Teacher Doc Analyzer</h1>
+
+  <input type="file" id="fileInput" />
+  <button onclick="uploadFile()">Extract Text</button>
+  <textarea id="textInput" rows="10" placeholder="Or paste your text here..."></textarea>
+
+  <select id="task">
+    <option value="summary">Summarize</option>
+    <option value="quiz">Generate Quiz</option>
+    <option value="feedback">Provide Feedback</option>
+    <option value="grade">Grade</option>
+  </select>
+
+  <button onclick="generateContent()">Generate</button>
+  <div id="output"></div>
+
+  <script>
+    async function uploadFile() {
+      const fileInput = document.getElementById("fileInput");
+      const formData = new FormData();
+      formData.append("file", fileInput.files[0]);
+
+      const res = await fetch("http://127.0.0.1:8000/upload/", {
+        method: "POST",
+        body: formData
+      });
+      const data = await res.json();
+      document.getElementById("textInput").value = data.text;
+    }
+
+    async function generateContent() {
+      const text = document.getElementById("textInput").value;
+      const task = document.getElementById("task").value;
+
+      const res = await fetch("http://127.0.0.1:8000/generate/", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: text, task: task })
+      });
+      const data = await res.json();
+      document.getElementById("output").innerText = data.result;
+    }
+  </script>
+</body>
+</html>
