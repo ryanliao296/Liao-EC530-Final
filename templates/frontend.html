@@ -1,1 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Teacher Doc Analyzer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Add jsPDF library for PDF generation -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <!-- Add html2canvas for converting HTML to canvas -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center">
+  <div class="bg-white p-6 rounded-2xl shadow-xl w-full max-w-2xl">
+    <h1 class="text-2xl font-bold text-center mb-4 text-indigo-700">Teacher Doc Analyzer</h1>
+    
+    <form method="POST" enctype="multipart/form-data" class="space-y-4" id="analyzerForm">
+      <label class="block">
+        <span class="font-semibold">Upload PDF or enter text:</span>
+        <input type="file" name="file" accept="application/pdf" class="mt-2 block w-full" />
+      </label>
 
+      <textarea name="text" rows="6" placeholder="Or paste your text here..." class="w-full p-3 border rounded-md">{{ input_text }}</textarea>
+
+      <label class="block">
+        <span class="font-semibold">Choose a task:</span>
+        <select name="task" id="taskSelect" class="mt-2 w-full p-2 border rounded-md" onchange="toggleQuizOptions(this.value)">
+          <option value="summary">Summarize</option>
+          <option value="quiz">Generate Quiz</option>
+          <option value="feedback">Provide Feedback</option>
+          <option value="grade">Grade</option>
+        </select>
+      </label>
+
+      <div id="quiz-options" class="hidden space-y-2">
+        <label>
+          <span class="block font-semibold"># of Multiple Choice Questions:</span>
+          <input type="number" name="mc_count" min="0" value="0" class="w-full p-2 border rounded-md">
+        </label>
+        <label>
+          <span class="block font-semibold"># of Short Answer Questions:</span>
+          <input type="number" name="sa_count" min="0" value="0" class="w-full p-2 border rounded-md">
+        </label>
+      </div>
+
+      <div class="flex space-x-2">
+        <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 rounded-md">Generate</button>
+        <button type="button" onclick="clearForm()" class="w-1/3 bg-gray-400 hover:bg-gray-500 text-white font-bold py-2 rounded-md">Clear</button>
+      </div>
+    </form>
+
+    {% if result %}
+      <div class="mt-6 bg-gray-50 p-4 border rounded-md whitespace-pre-wrap" id="resultContent">
+        <div class="flex justify-between items-center mb-3">
+          <strong>Result:</strong>
+          <button onclick="exportToPDF()" class="bg-blue-500 hover:bg-blue-600 text-white px-2 py-1 rounded-md text-xs flex items-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            PDF
+          </button>
+        </div>
+        <div id="resultText">{{ result }}</div>
+      </div>
+      <!-- Hidden input to store the current task -->
+      <input type="hidden" id="currentTask" value="{{ request.form.get('task', 'summary') }}">
+    {% endif %}
+  </div>
+
+  <script>
+    // Set the task select value based on the submitted form data
+    window.onload = function() {
+      const currentTaskInput = document.getElementById('currentTask');
+      if (currentTaskInput) {
+        const taskValue = currentTaskInput.value;
+        document.getElementById('taskSelect').value = taskValue;
+        toggleQuizOptions(taskValue);
+      }
+    };
+
+    function toggleQuizOptions(value) {
+      const quizOptions = document.getElementById("quiz-options");
+      quizOptions.classList.toggle("hidden", value !== "quiz");
+    }
+    
+    function clearForm() {
+      document.querySelector('textarea[name="text"]').value = "";
+      document.querySelector('input[type="file"]').value = "";
+      
+      // Hide result area if it exists
+      const resultArea = document.querySelector('.mt-6');
+      if (resultArea) {
+        resultArea.style.display = 'none';
+      }
+    }
+    
+    // Ensure content is cleared on page load/refresh
+    window.addEventListener("pageshow", function(event) {
+      // Check if the page is being loaded from cache
+      if (event.persisted) {
+        document.querySelector('input[type="file"]').value = "";
+        document.querySelector('textarea[name="text"]').value = "";
+        
+        // Hide result area if it exists
+        const resultArea = document.querySelector('.mt-6');
+        if (resultArea) {
+          resultArea.style.display = 'none';
+        }
+      }
+    });
+    
+    // Export result to PDF function
+    function exportToPDF() {
+      // Get selected task type
+      const taskSelect = document.getElementById('taskSelect');
+      const taskType = taskSelect.options[taskSelect.selectedIndex].text;
+      
+      // Create timestamp for filename
+      const now = new Date();
+      const timestamp = now.toISOString().slice(0, 10);
+      
+      // Initialize jsPDF
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      
+      // PDF content setup
+      const content = document.getElementById('resultContent');
+      let resultText = document.getElementById('resultText').innerText;
+      
+      // Add title to PDF
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Teacher Doc Analyzer`, 20, 20);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'normal');
+      
+      // Process the text for short answer questions if it's a quiz
+      if (taskSelect.value === "quiz") {
+        // Find short answer questions and add space after them
+        let lines = resultText.split('\n');
+        let processedLines = [];
+        let inShortAnswer = false;
+        
+        for (let i = 0; i < lines.length; i++) {
+          processedLines.push(lines[i]);
+          
+          // Look for lines that might be short answer questions
+          // Typical formats: "1. Short answer question..." or "Short Answer Question 1: ..."
+          const isShortAnswer = (
+            lines[i].toLowerCase().includes("short answer") || 
+            (lines[i].match(/^\d+\.\s/) && !lines[i].toLowerCase().includes("multiple choice"))
+          );
+          
+          if (isShortAnswer && !lines[i+1]?.toLowerCase().includes("multiple choice")) {
+            // Add writing space after short answer questions (5 blank lines)
+            processedLines.push("\n\n\n\n\n");
+            inShortAnswer = true;
+          } else if (inShortAnswer && (lines[i].trim() === "" || lines[i].match(/^\d+\.\s/))) {
+            // End of a short answer question
+            inShortAnswer = false;
+          }
+        }
+        
+        resultText = processedLines.join('\n');
+      }
+      
+      // Add content to PDF - Split text to handle line wrapping
+      doc.setFontSize(11);
+      const textLines = doc.splitTextToSize(resultText, 170);
+      doc.text(textLines, 20, 40);
+      
+      // Save PDF
+      doc.save(`teacher-doc-analyzer-${taskType.toLowerCase()}-${timestamp}.pdf`);
+    }
+  </script>
+</body>
+</html>
