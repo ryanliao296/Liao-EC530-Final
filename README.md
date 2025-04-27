@@ -49,3 +49,21 @@ http://127.0.0.1:5000
 5. Click "Generate" to process the request
 
 6. View results and optionally export to PDF by clicking the PDF button
+
+## Building and Running the Docker Container Image
+
+1. Build the Docker Image
+```bash
+docker build -t docanalyzer .
+```
+2. Run the Docker Image
+Pass your API key as an environment variable
+```bash
+docker run -p 5000:5000 -e OPENAI_API_KEY=<your-openai-api-key> docanalyzer
+```
+
+3. Access the app
+Open your browser and go to:
+```bash
+http://localhost:5000
+```
