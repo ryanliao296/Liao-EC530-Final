@@ -22,7 +22,7 @@ cd Liao-EC530-Final
 ```
 2. Install Dependencies
 ```bash
-pip install flask openai python-dotenv pymupdf
+pip install flask openai pymupdf
 ```
 
 3. Create a templates folder and place the frontend.html file inside:
