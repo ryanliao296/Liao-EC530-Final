@@ -1,10 +1,8 @@
 from flask import Flask, render_template, request
 from openai import OpenAI
-from dotenv import load_dotenv
 import os
 import fitz  
 
-load_dotenv()
 client = OpenAI()
 
 app = Flask(__name__)
